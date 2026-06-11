@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yhtiön purkusimulaattori</title>
+<style>
+  :root {
+    --bg:#0b1220; --panel:#131c2e; --muted:#9fb0cc; --text:#eef4ff; --accent:#6ea8fe; --line:#2a3854; --good:#22c55e; --warn:#f59e0b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:1500px; margin:0 auto; padding:20px; }
+  h1,h2,h3 { margin:0 0 12px; }
+  p { color:var(--muted); line-height:1.45; }
+  .grid { display:grid; gap:16px; }
+  .grid-2 { grid-template-columns: 420px 1fr; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid .full { grid-column:1 / -1; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  input[type="number"] { width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:#0d1628; color:var(--text); }
+  button { appearance:none; border:none; border-radius:12px; padding:12px 16px; background:var(--accent); color:#08111f; font-weight:700; cursor:pointer; }
+  .secondary { background:#22314d; color:var(--text); }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .card { background:#0d1628; border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .k { font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .v { font-size:22px; font-weight:800; }
+  .small { font-size:12px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border-bottom:1px solid var(--line); padding:8px 9px; text-align:right; vertical-align:top; }
+  th:first-child, td:first-child { text-align:left; }
+  th { position:sticky; top:0; background:#10192b; }
+  .table-wrap { overflow:auto; max-height:460px; border:1px solid var(--line); border-radius:12px; }
+  .chart { width:100%; height:320px; background:#0d1628; border:1px solid var(--line); border-radius:14px; padding:10px; }
+  .legend { display:flex; gap:16px; font-size:12px; color:var(--muted); margin-top:8px; flex-wrap:wrap; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .note { font-size:12px; color:var(--muted); }
+  .ok { color:var(--good); }
+  .warn { color:var(--warn); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  details { border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#0d1628; }
+  summary { cursor:pointer; font-weight:700; }
+  @media (max-width:1200px) { .grid-2 { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:780px) { .form-grid, .cards { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap grid">
+  <div>
+    <h1>Yhtiön purkusimulaattori</h1>
+    <p>Simulaattori vertailee eri purkuvuosia ja suosittelee ajankohtaa pienimmän efektiivisen veroasteen perusteella. Malli on tarkoituksella yksinkertaistettu: tuotto oletetaan vakioksi, tappioita ei hyödynnetä, SVOP-erityistilanteita ei huomioida, eikä ansiotuloverotuksessa huomioida vähennyksiä.</p>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="panel">
+      <h2>Lähtötiedot</h2>
+      <div class="form-grid">
+        <div><label>Sijoitusten tasearvo (€)</label><input id="bookValue" type="number" step="0.01" value="400000"></div>
+        <div><label>Sijoitusten nykyinen käypä arvo (€)</label><input id="marketValue" type="number" step="0.01" value="600000"></div>
+        <div><label>Velat (€)</label><input id="liabilities" type="number" step="0.01" value="0"></div>
+        <div><label>Jakokelpoiset varat nyt (€)</label><input id="distributableReserves" type="number" step="0.01" value="120000"></div>
+        <div><label>Vuosittain tavoiteltu osinko yhteensä (€)</label><input id="annualDividend" type="number" step="0.01" value="30000"></div>
+        <div><label>Yhtiön vuosikulut (€)</label><input id="annualExpenses" type="number" step="0.01" value="2000"></div>
+        <div><label>Varojen tuotto vuodessa (%)</label><input id="annualReturn" type="number" step="0.01" value="5.5"></div>
+        <div><label>Inflaatio (%) – vain tallennetaan</label><input id="inflation" type="number" step="0.01" value="2"></div>
+        <div><label>Simuloinnin pituus (vuotta)</label><input id="years" type="number" step="1" value="20"></div>
+        <div><label>Yhteisövero (%)</label><input id="corporateTaxRate" type="number" step="0.01" value="20"></div>
+
+        <div class="full"><h3>Osakas 1</h3></div>
+        <div><label>Omistusosuus (%)</label><input id="sh1Ownership" type="number" step="0.01" value="50"></div>
+        <div><label>Osakkeiden hankintahinta (€)</label><input id="sh1AcquisitionCost" type="number" step="0.01" value="10000"></div>
+        <div><label>Muut ansiotulot / vuosi (€)</label><input id="sh1OtherEarned" type="number" step="0.01" value="40000"></div>
+        <div><label>Muut pääomatulot / vuosi (€)</label><input id="sh1OtherCapital" type="number" step="0.01" value="0"></div>
+        <div><label>Omistusaika purkuhetkellä (vuotta nyt)</label><input id="sh1OwnershipYearsNow" type="number" step="0.01" value="12"></div>
+
+        <div class="full"><h3>Osakas 2</h3></div>
+        <div><label>Omistusosuus (%)</label><input id="sh2Ownership" type="number" step="0.01" value="50"></div>
+        <div><label>Osakkeiden hankintahinta (€)</label><input id="sh2AcquisitionCost" type="number" step="0.01" value="10000"></div>
+        <div><label>Muut ansiotulot / vuosi (€)</label><input id="sh2OtherEarned" type="number" step="0.01" value="40000"></div>
+        <div><label>Muut pääomatulot / vuosi (€)</label><input id="sh2OtherCapital" type="number" step="0.01" value="0"></div>
+        <div><label>Omistusaika purkuhetkellä (vuotta nyt)</label><input id="sh2OwnershipYearsNow" type="number" step="0.01" value="12"></div>
+      </div>
+      <div class="actions" style="margin-top:16px;">
+        <button id="runBtn">Laske</button>
+        <button id="demoBtn" class="secondary">Palauta esimerkkiluvut</button>
+      </div>
+      <p class="note" style="margin-top:14px;">Efektiivinen veroaste lasketaan kaavalla <span class="mono">(osinkoverot + purkuverot) / (brutto-osingot + brutto-purkujako)</span>, ja suositukseksi valitaan vuosi, jolla aste on pienin (tasatilanteessa aikaisin vuosi). Lisäksi raportoidaan erikseen myös all-in-aste, jossa mukana ovat myös yhtiön yhteisöverot.</p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Suositus</h2>
+        <div id="summaryCards" class="cards"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Purkuvuosien vertailu</h2>
+        <div class="table-wrap"><table id="comparisonTable"></table></div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="panel">
+          <h2>Graafi: nettovarallisuus purkuhetkellä</h2>
+          <div id="chartNetAssets" class="chart"></div>
+          <div class="legend"><span><span class="dot" style="background:#6ea8fe"></span>Nettovarallisuus ennen purkua</span></div>
+        </div>
+        <div class="panel">
+          <h2>Graafi: osakkaiden nettosaanto yhteensä</h2>
+          <div id="chartNetProceeds" class="chart"></div>
+          <div class="legend"><span><span class="dot" style="background:#22c55e"></span>Nettosaanto kaikkien verojen jälkeen</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Vuositason erittely suositellulle purkuvuodelle</h2>
+        <div id="scenarioTitle" class="small" style="margin-bottom:10px;"></div>
+        <div class="table-wrap" style="max-height:520px;"><table id="yearlyTable"></table></div>
+      </div>
+
+      <details>
+        <summary>Mallin oletukset tässä HTML-versiossa</summary>
+        <p>
+          1) Kaikki varat ovat vakuutuskuoressa ja alku-kassa on 0 €.<br>
+          2) Kuoresta nostetaan vuosittain vain se määrä, joka tarvitaan osinkoon, kuluihin ja nostosta syntyvään yhteisöveroon. Vuosikulut vähennetään yhteisöverotuksessa saman vuoden realisoituneesta voitosta; voiton ylittävää kulua (tappiota) ei hyödynnetä.<br>
+          3) Noston realisoituvan voiton osuus lasketaan suhteessa <span class="mono">(käypä arvo − jäljellä oleva hankintameno) / käypä arvo</span>.<br>
+          4) Jakokelpoiset varat kasvavat vain realisoituneen voiton verojen jälkeisellä määrällä ja pienenevät osingoista sekä kuluista.<br>
+          5) Osinkoa pyritään maksamaan tavoitemäärä; jos se ei enää onnistu, maksetaan enintään mahdollinen alempi määrä. Jos varat eivät riitä edes vuosikuluihin, skenaario merkitään vertailuun varoituksella ja purku lasketaan varojen loppumisvuonna.<br>
+          6) Osingon pääomatulo-osuuden 8 %:n raja lasketaan edellisen tilikauden lopun nettovarallisuudesta verotusarvoin: vakuutuskuori arvostetaan jäljellä olevaan hankintamenoon, ei käypään arvoon.<br>
+          7) Ansiotulovero on yksinkertaistettu arvio: valtion tuloveroasteikko (rajat 21 200 / 31 500 / 52 100 / 88 200 / 150 000 €, marginaalit 12,64–44,25 %) sekä keskimääräinen kunnallisvero ja sairaanhoitomaksu yhteensä 8,9 % tasaprosenttina. Vähennyksiä ei huomioida, joten pienillä tuloilla vero arvioituu yläkanttiin.<br>
+          8) Purkutilanteessa jako-osuus verotetaan osakkeiden luovutusvoittona, ja ohjelma valitsee automaattisesti todellisen hankintahinnan tai hankintameno-olettaman sen mukaan, kumpi tuottaa pienemmän verotettavan voiton.<br>
+          9) Suositus on purkuvuosi, jonka efektiivinen veroaste (osakkaiden verot / bruttojako) on pienin; tasatilanteessa valitaan aikaisin vuosi.<br>
+          10) Inflaatiokenttä on mukana vain tallennettavana parametrina eikä vaikuta laskentaan.
+        </p>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script>
+function eur(x) {
+  return new Intl.NumberFormat('fi-FI', { style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(x || 0);
+}
+function num(x, d=2) {
+  return new Intl.NumberFormat('fi-FI', { maximumFractionDigits:d, minimumFractionDigits:d }).format(x || 0);
+}
+function pct(x, d=2) { return num(x, d) + ' %'; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function val(id) { return parseFloat(document.getElementById(id).value || '0'); }
+
+function capitalTax(totalTaxableCapitalIncome) {
+  const x = Math.max(0, totalTaxableCapitalIncome);
+  return Math.min(x, 30000) * 0.30 + Math.max(0, x - 30000) * 0.34;
+}
+
+function incrementalCapitalTax(baseOtherCapital, additionalTaxableCapital) {
+  const before = capitalTax(baseOtherCapital);
+  const after = capitalTax(baseOtherCapital + Math.max(0, additionalTaxableCapital));
+  return Math.max(0, after - before);
+}
+
+function earnedTaxSimple(totalEarnedIncome) {
+  const income = Math.max(0, totalEarnedIncome);
+  // Valtion tuloveroasteikko (2025) ilman vähennyksiä
+  const brackets = [21200, 31500, 52100, 88200, 150000];
+  const rates = [0.1264, 0.19, 0.3025, 0.34, 0.4175, 0.4425];
+  let tax = 0;
+  let prev = 0;
+  const levels = [...brackets, Infinity];
+  for (let i = 0; i < levels.length; i++) {
+    const upper = levels[i];
+    if (income > prev) {
+      tax += (Math.min(income, upper) - prev) * rates[i];
+    }
+    prev = upper;
+    if (income <= upper) break;
+  }
+  // Keskimääräinen kunnallisvero (n. 7,4 %) ja sairaanhoitomaksu (n. 1,5 %) tasaprosenttina
+  tax += income * 0.089;
+  return tax;
+}
+
+function incrementalEarnedTax(baseEarned, additionalTaxableEarned) {
+  const before = earnedTaxSimple(baseEarned);
+  const after = earnedTaxSimple(baseEarned + Math.max(0, additionalTaxableEarned));
+  return Math.max(0, after - before);
+}
+
+function withdrawalForNetNeed(needNetCash, marketValue, bookValue, corpRate, deductibleExpenses) {
+  const expenses = Math.max(0, deductibleExpenses || 0);
+  if (needNetCash <= 0) return { withdrawal: 0, realizedGain: 0, corpTax: 0, gainRatio: marketValue > 0 ? Math.max(0, (marketValue - bookValue) / marketValue) : 0 };
+  if (marketValue <= 0) return { withdrawal: Infinity, realizedGain: Infinity, corpTax: Infinity, gainRatio: 0 };
+  const gainRatio = clamp((marketValue - bookValue) / marketValue, 0, 1);
+  let withdrawal;
+  if (needNetCash * gainRatio <= expenses) {
+    withdrawal = needNetCash;
+  } else {
+    const denom = 1 - corpRate * gainRatio;
+    if (denom <= 0) return { withdrawal: Infinity, realizedGain: Infinity, corpTax: Infinity, gainRatio };
+    withdrawal = (needNetCash - corpRate * expenses) / denom;
+  }
+  const realizedGain = withdrawal * gainRatio;
+  const corpTax = Math.max(0, realizedGain - expenses) * corpRate;
+  return { withdrawal, realizedGain, corpTax, gainRatio };
+}
+
+function dividendTaxesForShareholder(shareDividend, ownershipFraction, taxNetWorth, sh) {
+  const capLimitTotal = Math.max(0, taxNetWorth * 0.08);
+  const capLimitShare = capLimitTotal * ownershipFraction;
+  const capPortion = Math.min(shareDividend, capLimitShare);
+  const earnedPortion = Math.max(0, shareDividend - capLimitShare);
+
+  const capStandard = Math.min(capPortion, 150000);
+  const capHigh = Math.max(0, capPortion - 150000);
+  const taxableCapital = capStandard * 0.25 + capHigh * 0.85;
+  const taxableEarned = earnedPortion * 0.75;
+
+  const capTax = incrementalCapitalTax(sh.otherCapital, taxableCapital);
+  const earnedTax = incrementalEarnedTax(sh.otherEarned, taxableEarned);
+
+  return {
+    capLimitShare,
+    capPortion,
+    earnedPortion,
+    taxableCapital,
+    taxableEarned,
+    capTax,
+    earnedTax,
+    totalTax: capTax + earnedTax,
+    netDividend: shareDividend - capTax - earnedTax,
+  };
+}
+
+function liquidationTaxesForShareholder(distribution, additionalTaxableCapitalAlreadyThisYear, sh, yearsElapsed) {
+  const ownershipYears = sh.ownershipYearsNow + yearsElapsed;
+  const hmoRate = ownershipYears >= 10 ? 0.40 : 0.20;
+  const gainActual = Math.max(0, distribution - sh.acquisitionCost);
+  const gainHmo = Math.max(0, distribution - distribution * hmoRate);
+  const selectedGain = Math.min(gainActual, gainHmo);
+  const method = gainActual <= gainHmo ? 'Todellinen hankintahinta' : `HMO ${hmoRate * 100} %`;
+  const tax = capitalTax(sh.otherCapital + additionalTaxableCapitalAlreadyThisYear + selectedGain) - capitalTax(sh.otherCapital + additionalTaxableCapitalAlreadyThisYear);
+  return {
+    ownershipYears,
+    hmoRate,
+    gainActual,
+    gainHmo,
+    selectedGain,
+    method,
+    capitalTax: Math.max(0, tax),
+    netDistribution: distribution - Math.max(0, tax),
+  };
+}
+
+function maxDividendPossible(state, annualExpenses, corpRate) {
+  let low = 0;
+  let high = Math.max(0, state.marketValue);
+  for (let i = 0; i < 60; i++) {
+    const mid = (low + high) / 2;
+    const need = mid + annualExpenses;
+    const wd = withdrawalForNetNeed(need, state.marketValue, state.bookValue, corpRate, annualExpenses);
+    const afterTaxGain = wd.realizedGain - wd.corpTax;
+    const endingDistrib = state.distributableReserves + afterTaxGain - annualExpenses - mid;
+    const endingMv = state.marketValue - wd.withdrawal;
+    const endingBook = state.marketValue > 0 ? state.bookValue * (1 - wd.withdrawal / state.marketValue) : 0;
+    const endingEquity = endingMv - state.liabilities;
+    const feasible = isFinite(wd.withdrawal) && wd.withdrawal <= state.marketValue + 1e-9 && endingDistrib >= -1e-6 && endingBook >= -1e-6 && endingEquity >= -1e-6;
+    if (feasible) low = mid; else high = mid;
+  }
+  return Math.max(0, low);
+}
+
+function simulateCandidate(inputs, liquidationYear) {
+  const corpRate = inputs.corporateTaxRate;
+  const shareholders = inputs.shareholders;
+  const state = {
+    marketValue: inputs.marketValue,
+    bookValue: inputs.bookValue,
+    liabilities: inputs.liabilities,
+    distributableReserves: inputs.distributableReserves,
+  };
+  const yearly = [];
+  let totalGrossDividends = 0;
+  let totalShareholderDividendTaxes = 0;
+  let totalCorporateTaxesDuringYears = 0;
+  let totalCompanyExpenses = 0;
+  let accumulatedTaxableCapitalThisLiquidationYear = [0, 0];
+  let depleted = false;
+  let depletedYear = null;
+
+  for (let year = 1; year <= liquidationYear; year++) {
+    // Osingon 8 %:n raja: edellisen tilikauden lopun nettovarallisuus verotusarvoin
+    // (vakuutuskuori arvostetaan jäljellä olevaan hankintamenoon)
+    const taxNetWorth = Math.max(0, state.bookValue - state.liabilities);
+    state.marketValue *= (1 + inputs.annualReturn);
+    const targetDividend = Math.max(0, inputs.annualDividend);
+    const maxDiv = maxDividendPossible(state, inputs.annualExpenses, corpRate);
+    const actualDividend = Math.min(targetDividend, maxDiv);
+    const need = actualDividend + inputs.annualExpenses;
+    const wd = withdrawalForNetNeed(need, state.marketValue, state.bookValue, corpRate, inputs.annualExpenses);
+    if (!isFinite(wd.withdrawal) || wd.withdrawal > state.marketValue + 1e-6) {
+      depleted = true;
+      depletedYear = year;
+      break;
+    }
+    const afterTaxGain = wd.realizedGain - wd.corpTax;
+
+    const beforeBook = state.bookValue;
+    const beforeMv = state.marketValue;
+    state.marketValue = Math.max(0, state.marketValue - wd.withdrawal);
+    state.bookValue = beforeMv > 0 ? Math.max(0, beforeBook * (1 - wd.withdrawal / beforeMv)) : 0;
+    state.distributableReserves = state.distributableReserves + afterTaxGain - inputs.annualExpenses - actualDividend;
+
+    const shareholderRows = shareholders.map((sh, idx) => {
+      const shareDiv = actualDividend * sh.ownership;
+      const t = dividendTaxesForShareholder(shareDiv, sh.ownership, taxNetWorth, sh);
+      if (year === liquidationYear) accumulatedTaxableCapitalThisLiquidationYear[idx] = t.taxableCapital;
+      return { ...t, grossDividend: shareDiv };
+    });
+
+    const yearDividendTax = shareholderRows.reduce((s, r) => s + r.totalTax, 0);
+    totalGrossDividends += actualDividend;
+    totalShareholderDividendTaxes += yearDividendTax;
+    totalCorporateTaxesDuringYears += wd.corpTax;
+    totalCompanyExpenses += inputs.annualExpenses;
+
+    yearly.push({
+      year,
+      startMarketValue: beforeMv / (1 + inputs.annualReturn),
+      marketValueAfterReturn: beforeMv,
+      startBookValue: beforeBook,
+      withdrawal: wd.withdrawal,
+      realizedGain: wd.realizedGain,
+      corporateTax: wd.corpTax,
+      annualExpenses: inputs.annualExpenses,
+      actualDividend,
+      dividendTax: yearDividendTax,
+      endMarketValue: state.marketValue,
+      endBookValue: state.bookValue,
+      endNetAssets: state.marketValue - state.liabilities,
+      distributableReserves: state.distributableReserves,
+      gainRatio: wd.gainRatio,
+      shareholderRows,
+    });
+  }
+
+  // Jos varat loppuivat kesken, purku lasketaan varojen loppumisvuonna
+  const yearsElapsed = depleted ? depletedYear : liquidationYear;
+  const preLiquidationNetAssets = state.marketValue - state.liabilities;
+  const remainingUnrealizedGain = Math.max(0, state.marketValue - state.bookValue);
+  const liquidationCorpTax = remainingUnrealizedGain * corpRate;
+  const liquidationAssetsAfterCorpTax = Math.max(0, state.marketValue - liquidationCorpTax - state.liabilities);
+  const shareholderLiquidation = shareholders.map((sh, idx) => {
+    const distribution = liquidationAssetsAfterCorpTax * sh.ownership;
+    return {
+      distribution,
+      ...liquidationTaxesForShareholder(distribution, accumulatedTaxableCapitalThisLiquidationYear[idx], sh, yearsElapsed)
+    };
+  });
+  const liquidationShareholderTax = shareholderLiquidation.reduce((s, r) => s + r.capitalTax, 0);
+  const grossToShareholders = totalGrossDividends + liquidationAssetsAfterCorpTax;
+  const totalNetToShareholders = grossToShareholders - totalShareholderDividendTaxes - liquidationShareholderTax;
+  const shareholderEffectiveRate = grossToShareholders > 0
+    ? (totalShareholderDividendTaxes + liquidationShareholderTax) / grossToShareholders
+    : 0;
+  const allInEffectiveRate = grossToShareholders > 0
+    ? (totalCorporateTaxesDuringYears + liquidationCorpTax + totalShareholderDividendTaxes + liquidationShareholderTax) / grossToShareholders
+    : 0;
+
+  return {
+    liquidationYear,
+    depleted,
+    depletedYear,
+    yearly,
+    preLiquidationNetAssets,
+    remainingUnrealizedGain,
+    liquidationCorpTax,
+    liquidationAssetsAfterCorpTax,
+    shareholderLiquidation,
+    totalGrossDividends,
+    totalShareholderDividendTaxes,
+    totalCorporateTaxesDuringYears,
+    totalCompanyExpenses,
+    liquidationShareholderTax,
+    totalNetToShareholders,
+    shareholderEffectiveRate,
+    allInEffectiveRate,
+  };
+}
+
+function pickRecommendation(results) {
+  if (!results.length) return null;
+  const feasible = results.filter(r => !r.depleted);
+  const pool = feasible.length ? feasible : results;
+  return pool.reduce((a, b) => b.shareholderEffectiveRate < a.shareholderEffectiveRate ? b : a);
+}
+
+function collectInputs() {
+  const sh1 = val('sh1Ownership') / 100;
+  const sh2 = val('sh2Ownership') / 100;
+  const sum = sh1 + sh2;
+  const norm1 = sum > 0 ? sh1 / sum : 0.5;
+  const norm2 = sum > 0 ? sh2 / sum : 0.5;
+  return {
+    bookValue: val('bookValue'),
+    marketValue: val('marketValue'),
+    liabilities: val('liabilities'),
+    distributableReserves: val('distributableReserves'),
+    annualDividend: val('annualDividend'),
+    annualExpenses: val('annualExpenses'),
+    annualReturn: val('annualReturn') / 100,
+    inflation: val('inflation') / 100,
+    years: Math.max(0, Math.round(val('years'))),
+    corporateTaxRate: val('corporateTaxRate') / 100,
+    shareholders: [
+      {
+        ownership: norm1,
+        acquisitionCost: val('sh1AcquisitionCost'),
+        otherEarned: val('sh1OtherEarned'),
+        otherCapital: val('sh1OtherCapital'),
+        ownershipYearsNow: val('sh1OwnershipYearsNow'),
+        label: 'Osakas 1'
+      },
+      {
+        ownership: norm2,
+        acquisitionCost: val('sh2AcquisitionCost'),
+        otherEarned: val('sh2OtherEarned'),
+        otherCapital: val('sh2OtherCapital'),
+        ownershipYearsNow: val('sh2OwnershipYearsNow'),
+        label: 'Osakas 2'
+      }
+    ]
+  };
+}
+
+function renderSummary(best) {
+  const depletedNote = best.depleted ? `<div class="small warn">Varat eivät riitä kuluihin; purku laskettu vuonna ${best.depletedYear}</div>` : '';
+  document.getElementById('summaryCards').innerHTML = `
+    <div class="card"><div class="k">Suositeltu purkuvuosi</div><div class="v">${best.liquidationYear}</div><div class="small">0 = purku heti</div>${depletedNote}</div>
+    <div class="card"><div class="k">Efektiivinen veroaste</div><div class="v">${pct(best.shareholderEffectiveRate * 100)}</div><div class="small">Osinkoverot + purkuvero / bruttojako</div></div>
+    <div class="card"><div class="k">All-in veroaste</div><div class="v">${pct(best.allInEffectiveRate * 100)}</div><div class="small">Mukana myös yhteisöverot</div></div>
+    <div class="card"><div class="k">Osakkaiden nettosaanto yhteensä</div><div class="v">${eur(best.totalNetToShareholders)}</div><div class="small">Kaikkien verojen jälkeen</div></div>
+  `;
+}
+
+function renderComparison(results, bestYear) {
+  const rows = results.map(r => `
+    <tr ${r.liquidationYear === bestYear ? 'style="background:rgba(34,197,94,.08)"' : (r.depleted ? 'style="opacity:.55"' : '')}>
+      <td>${r.liquidationYear}${r.depleted ? ' ⚠' : ''}</td>
+      <td>${eur(r.totalGrossDividends)}</td>
+      <td>${eur(r.liquidationAssetsAfterCorpTax)}</td>
+      <td>${eur(r.totalShareholderDividendTaxes)}</td>
+      <td>${eur(r.liquidationShareholderTax)}</td>
+      <td>${eur(r.totalCorporateTaxesDuringYears + r.liquidationCorpTax)}</td>
+      <td>${pct(r.shareholderEffectiveRate * 100)}</td>
+      <td>${pct(r.allInEffectiveRate * 100)}</td>
+      <td>${eur(r.totalNetToShareholders)}</td>
+    </tr>
+  `).join('');
+  document.getElementById('comparisonTable').innerHTML = `
+    <thead>
+      <tr>
+        <th>Purkuvuosi</th>
+        <th>Brutto-osingot yht.</th>
+        <th>Brutto-purkujako</th>
+        <th>Osinkoverot</th>
+        <th>Purkuvero osakkaille</th>
+        <th>Yhteisöverot</th>
+        <th>Efektiivinen veroaste</th>
+        <th>All-in aste</th>
+        <th>Nettosaanto</th>
+      </tr>
+    </thead>
+    <tbody>${rows}${results.some(r => r.depleted) ? '<tr><td colspan="9" class="small" style="text-align:left">⚠ Varat eivät riitä kuluihin koko jaksolle; purku on laskettu varojen loppumisvuonna.</td></tr>' : ''}</tbody>
+  `;
+}
+
+function renderYearly(best) {
+  document.getElementById('scenarioTitle').textContent = best.depleted
+    ? `Näytetään skenaario, jossa varat loppuivat ja purku tapahtuu vuonna ${best.depletedYear}.`
+    : `Näytetään skenaario, jossa purku tapahtuu vuoden ${best.liquidationYear} jälkeen.`;
+  const rows = best.yearly.map(y => `
+    <tr>
+      <td>${y.year}</td>
+      <td>${eur(y.marketValueAfterReturn)}</td>
+      <td>${eur(y.withdrawal)}</td>
+      <td>${eur(y.realizedGain)}</td>
+      <td>${eur(y.corporateTax)}</td>
+      <td>${eur(y.annualExpenses)}</td>
+      <td>${eur(y.actualDividend)}</td>
+      <td>${eur(y.dividendTax)}</td>
+      <td>${eur(y.endMarketValue)}</td>
+      <td>${eur(y.endNetAssets)}</td>
+      <td>${eur(y.distributableReserves)}</td>
+    </tr>
+  `).join('');
+
+  const liquidationRows = best.shareholderLiquidation.map((r, i) => `
+    <tr>
+      <td>Purku / osakas ${i + 1}</td>
+      <td colspan="2">Bruttojako ${eur(r.distribution)}</td>
+      <td colspan="2">Valittu menetelmä: ${r.method}</td>
+      <td colspan="2">Verotettava luovutusvoitto ${eur(r.selectedGain)}</td>
+      <td>${eur(r.capitalTax)}</td>
+      <td colspan="3">Nettosaanto ${eur(r.netDistribution)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('yearlyTable').innerHTML = `
+    <thead>
+      <tr>
+        <th>Vuosi</th>
+        <th>Käypä arvo tuoton jälkeen</th>
+        <th>Nosto kuoresta</th>
+        <th>Realisoitu voitto</th>
+        <th>Yhteisövero</th>
+        <th>Kulut</th>
+        <th>Brutto-osinko</th>
+        <th>Osinkoverot</th>
+        <th>Käypä arvo vuoden lopussa</th>
+        <th>Nettovarallisuus vuoden lopussa</th>
+        <th>Jakokelpoiset varat</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr style="background:rgba(110,168,254,.08)">
+        <td>Purku yhteensä</td>
+        <td>${eur(best.preLiquidationNetAssets)}</td>
+        <td colspan="2">Jäljellä oleva realisoitumaton voitto ${eur(best.remainingUnrealizedGain)}</td>
+        <td>${eur(best.liquidationCorpTax)}</td>
+        <td colspan="2">Purkupotin netto yhtiössä ${eur(best.liquidationAssetsAfterCorpTax)}</td>
+        <td>${eur(best.liquidationShareholderTax)}</td>
+        <td colspan="3">Osakkaiden nettosaanto ${eur(best.totalNetToShareholders)}</td>
+      </tr>
+      ${liquidationRows}
+    </tbody>
+  `;
+}
+
+function renderLineChart(containerId, data, color) {
+  const el = document.getElementById(containerId);
+  const w = el.clientWidth - 20;
+  const h = el.clientHeight - 20;
+  const pad = { l: 54, r: 20, t: 16, b: 36 };
+  const xs = data.map(d => d.x);
+  const ys = data.map(d => d.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(0, ...ys), maxY = Math.max(...ys);
+  const sx = x => pad.l + ((x - minX) / Math.max(1, (maxX - minX))) * (w - pad.l - pad.r);
+  const sy = y => h - pad.b - ((y - minY) / Math.max(1, (maxY - minY))) * (h - pad.t - pad.b);
+  const points = data.map(d => `${sx(d.x)},${sy(d.y)}`).join(' ');
+  const ticks = 5;
+  let grid = '';
+  for (let i = 0; i <= ticks; i++) {
+    const v = minY + (maxY - minY) * (i / ticks);
+    const y = sy(v);
+    grid += `<line x1="${pad.l}" y1="${y}" x2="${w - pad.r}" y2="${y}" stroke="#23304a" stroke-width="1" />`;
+    grid += `<text x="6" y="${y + 4}" fill="#9fb0cc" font-size="11">${Math.round(v/1000)}k</text>`;
+  }
+  let xLabels = '';
+  data.forEach(d => {
+    const x = sx(d.x);
+    xLabels += `<text x="${x}" y="${h - 8}" fill="#9fb0cc" font-size="11" text-anchor="middle">${d.x}</text>`;
+  });
+  el.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" aria-label="chart">
+      ${grid}
+      <line x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}" stroke="#3c4b69" />
+      <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${h - pad.b}" stroke="#3c4b69" />
+      <polyline fill="none" stroke="${color}" stroke-width="3" points="${points}" />
+      ${data.map(d => `<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="3.5" fill="${color}" />`).join('')}
+      ${xLabels}
+    </svg>
+  `;
+}
+
+function run() {
+  const inputs = collectInputs();
+  const results = [];
+  for (let y = 0; y <= inputs.years; y++) {
+    results.push(simulateCandidate(inputs, y));
+  }
+  const best = pickRecommendation(results);
+  renderSummary(best);
+  renderComparison(results, best.liquidationYear);
+  renderYearly(best);
+  renderLineChart('chartNetAssets', results.map(r => ({ x:r.liquidationYear, y:r.preLiquidationNetAssets })), '#6ea8fe');
+  renderLineChart('chartNetProceeds', results.map(r => ({ x:r.liquidationYear, y:r.totalNetToShareholders })), '#22c55e');
+}
+
+document.getElementById('runBtn').addEventListener('click', run);
+document.getElementById('demoBtn').addEventListener('click', () => {
+  const defaults = {
+    bookValue:400000, marketValue:600000, liabilities:0, distributableReserves:120000,
+    annualDividend:30000, annualExpenses:2000, annualReturn:5.5, inflation:2, years:20, corporateTaxRate:20,
+    sh1Ownership:50, sh1AcquisitionCost:10000, sh1OtherEarned:40000, sh1OtherCapital:0, sh1OwnershipYearsNow:12,
+    sh2Ownership:50, sh2AcquisitionCost:10000, sh2OtherEarned:40000, sh2OtherCapital:0, sh2OwnershipYearsNow:12
+  };
+  Object.entries(defaults).forEach(([k,v]) => document.getElementById(k).value = v);
+  run();
+});
+window.addEventListener('resize', () => { try { run(); } catch(e) {} });
+run();
+</script>
+</body>
+</html>
