@@ -1,6 +1,6 @@
 // Ajaa HTML-tiedoston todellisen <script>-lohkon DOM-stubeilla ja testaa laskennan
 const fs = require('fs');
-const html = fs.readFileSync(__dirname + '/yhtion_purkusimulaattori.html', 'utf8');
+const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
 const inputDefaults = {};
